@@ -1,3 +1,9 @@
+"""Manual integration smoke check against a running `make demo` stack.
+
+Not part of the pytest suite (see tests/) and not run in CI — this hits real
+ClickHouse/Kafka over the network, so it only makes sense against a live
+docker-compose stack. Run directly: `python test_consumer.py`.
+"""
 import asyncio
 from clickhouse_connect import get_client
 

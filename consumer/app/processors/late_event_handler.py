@@ -188,12 +188,11 @@ class LateEventHandler:
         return False, event
 
     def _adjust_timestamp(self, event: CartEvent, watermark: datetime) -> CartEvent:
-        """
-        Adjust event timestamp to watermark for window aggregation.
-        Preserves original timestamp in a separate field for auditing.
-        """
-        # Create a copy with adjusted timestamp
-        adjusted_event = CartEvent(
+        """Return a copy of the event with its timestamp adjusted to the watermark
+        for window aggregation. The original timestamp is not retained anywhere
+        downstream — callers that need it should read it from `event` before
+        calling this method."""
+        return CartEvent(
             event_id=event.event_id,
             user_id=event.user_id,
             event_type=event.event_type,
@@ -201,14 +200,9 @@ class LateEventHandler:
             product_name=event.product_name,
             quantity=event.quantity,
             price=event.price,
-            timestamp=watermark,  # Adjusted for windowing
-            session_id=event.session_id
+            timestamp=watermark,
+            session_id=event.session_id,
         )
-
-        # Add original timestamp as metadata if schema allows
-        adjusted_event.original_timestamp = event.timestamp
-
-        return adjusted_event
 
     def get_watermark_stats(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Get watermark statistics for a user"""

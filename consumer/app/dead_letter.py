@@ -44,3 +44,13 @@ async def publish_unexpected_error(topic, event: CartEvent, exc: Exception) -> N
         original_event=event.asdict(),
         error=f'unexpected_error: {exc}',
     )
+
+
+async def publish_flush_failed(topic, event: CartEvent, exc: Exception) -> None:
+    """Used when a ClickHouse batch flush fails — called once per event in the
+    failed batch, not just the event that happened to trigger the flush."""
+    await publish_dead_letter(
+        topic,
+        original_event=event.asdict(),
+        error=f'clickhouse_flush_failed: {exc}',
+    )

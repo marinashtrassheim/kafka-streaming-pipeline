@@ -94,6 +94,20 @@ docker compose exec clickhouse clickhouse-client --query \
   "SELECT event_id, user_id, event_type, is_late FROM cart_events_raw ORDER BY processed_at DESC LIMIT 10"
 ```
 
+## Tests
+
+Unit tests cover the processors (dedup, late-event/watermark handling, cart state, and the
+batch-flush error path) without needing the docker stack running:
+
+```bash
+cd consumer
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+`consumer/test_consumer.py` is a separate manual smoke check against a live `make demo` stack
+(not part of the pytest suite or CI).
+
 ## Troubleshooting
 
 | Symptom | What to do |

@@ -23,7 +23,7 @@ from app.dead_letter import (
     publish_validation_error,
     publish_unexpected_error,
 )
-from app.sinks import flush_buffer_to_clickhouse
+from app.sinks import FlushError, flush_buffer_to_clickhouse
 from app.metrics_http import prometheus_blueprint
 
 logging.basicConfig(
@@ -139,7 +139,17 @@ async def process_cart_events(stream: faust.Stream) -> None:
                             buffer,
                             pipeline,
                             enriched_events_topic,
+                            dead_letter_topic,
                         )
+
+            except FlushError as exc:
+                # Every event in the failed batch was already dead-lettered
+                # inside flush_buffer_to_clickhouse — just log and record it.
+                logger.error("Batch flush failed: %s", exc)
+                EVENTS_PROCESSED.labels(
+                    event_type=getattr(event, 'event_type', 'unknown'),
+                    status='flush_error'
+                ).inc()
 
             except ValueError as exc:
                 logger.error("Validation error for event %s: %s", event.event_id, exc)
@@ -163,11 +173,15 @@ async def process_cart_events(stream: faust.Stream) -> None:
                 ).inc()
 
     if buffer:
-        await flush_buffer_to_clickhouse(
-            buffer,
-            pipeline,
-            enriched_events_topic,
-        )
+        try:
+            await flush_buffer_to_clickhouse(
+                buffer,
+                pipeline,
+                enriched_events_topic,
+                dead_letter_topic,
+            )
+        except FlushError as exc:
+            logger.error("Final batch flush failed: %s", exc)
 
 
 @app.timer(interval=30.0)
